@@ -1,0 +1,12 @@
+# Corrigés et documents formateur : ne jamais publier (dépôt public)
+*bonnes_reponses*
+*Bonnes_reponses*
+*animateur*
+*.docx
+*.pptx
+*.json
+
+# Fichiers système
+Thumbs.db
+desktop.ini
+.DS_Store
