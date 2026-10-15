@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CELLULE NOMAD — Terminal de Mission 2</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#14213D;
+    --ink2:#1E3A5F;
+    --ink3:#1C2B52;
+    --orange:#FB8B24;
+    --orange-dim:#a8621c;
+    --teal:#0F9B8E;
+    --steel:#8D99AE;
+    --steel-light:#E4E7EC;
+    --paper:#FAFAF9;
+    --white:#FFFFFF;
+    --text:#2A2E3A;
+    --danger:#C0453A;
+    --mono: 'Consolas','SFMono-Regular',Menlo,monospace;
+    --sans: Arial, 'Helvetica Neue', sans-serif;
+    --body: Calibri, 'Segoe UI', system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:var(--ink);font-family:var(--body);color:var(--text);}
+  ::selection{background:var(--orange);color:white;}
+  button{font-family:inherit;cursor:pointer;}
+  a{color:inherit;}
+
+  /* ============ BOOT SCREEN ============ */
+  #boot{
+    position:fixed;inset:0;background:var(--ink);color:#B9C4E0;
+    display:flex;align-items:center;justify-content:center;flex-direction:column;
+    z-index:100; padding:2rem;
+  }
+  #boot .boot-box{max-width:640px;width:100%;}
+  #boot .boot-logo{font-family:var(--sans);font-weight:800;font-size:2.2rem;color:var(--white);letter-spacing:1px;margin-bottom:.2rem;}
+  #boot .boot-logo span{color:var(--orange);}
+  #boot .boot-sub{font-family:var(--mono);font-size:.8rem;color:var(--steel);margin-bottom:2rem;letter-spacing:1px;}
+  #boot-log{
+    font-family:var(--mono);font-size:.85rem;line-height:1.9;min-height:220px;
+    border-left:2px solid var(--teal); padding-left:1rem;
+  }
+  #boot-log .line{opacity:0;animation:fadeIn .4s forwards;}
+  #boot-log .ok{color:var(--teal);}
+  #boot-log .warn{color:var(--orange);}
+  @keyframes fadeIn{to{opacity:1;}}
+  .cursor{display:inline-block;width:8px;height:1em;background:var(--orange);vertical-align:middle;animation:blink 1s step-end infinite;}
+  @keyframes blink{50%{opacity:0;}}
+
+  #boot-form{margin-top:2rem;display:none;}
+  #boot-form.show{display:block;animation:fadeIn .5s forwards;}
+  #boot-form label{display:block;font-family:var(--mono);font-size:.78rem;color:var(--steel);margin-bottom:.5rem;letter-spacing:1px;}
+  #boot-form input{
+    width:100%;background:#0f1a30;border:1px solid #33456f;color:var(--white);
+    padding:.7rem .9rem;font-family:var(--body);font-size:1rem;border-radius:4px;outline:none;
+  }
+  #boot-form input:focus{border-color:var(--orange);}
+  #boot-enter{
+    margin-top:1.2rem; background:var(--orange); color:var(--ink); border:none;
+    padding:.8rem 1.8rem; font-weight:bold; font-size:.95rem; border-radius:4px;
+    letter-spacing:.5px; transition:transform .15s, box-shadow .15s;
+  }
+  #boot-enter:hover{transform:translateY(-1px); box-shadow:0 6px 18px rgba(251,139,36,.35);}
+  #boot-enter:disabled{opacity:.4;cursor:not-allowed;}
+
+  #reprise-form{margin-top:2rem;display:none;max-width:640px;}
+  #reprise-form.show{display:block;animation:fadeIn .5s forwards;}
+  .reprise-title{font-family:var(--mono);font-size:.85rem;color:var(--orange);letter-spacing:1px;margin-bottom:.7rem;font-weight:bold;}
+  .reprise-instr{font-size:.85rem;color:#B9C4E0;line-height:1.55;margin-bottom:1.3rem;}
+  .reprise-grid{display:flex;flex-wrap:wrap;gap:.9rem;margin-bottom:1.4rem;}
+  .reprise-field{flex:1 1 150px;}
+  .reprise-field label{display:block;font-family:var(--mono);font-size:.68rem;color:var(--steel);margin-bottom:.4rem;letter-spacing:.5px;}
+  .reprise-field input{
+    width:100%;background:#0f1a30;border:1px solid #33456f;color:var(--white);
+    padding:.6rem .7rem;font-family:var(--body);font-size:1rem;border-radius:4px;outline:none;
+  }
+  .reprise-field input:focus{border-color:var(--teal);}
+  #reprise-confirm{
+    background:var(--teal); color:white; border:none;
+    padding:.8rem 1.8rem; font-weight:bold; font-size:.95rem; border-radius:4px;
+    letter-spacing:.5px; transition:transform .15s, box-shadow .15s;
+  }
+  #reprise-confirm:hover{transform:translateY(-1px); box-shadow:0 6px 18px rgba(15,155,142,.35);}
+
+  /* ============ APP SHELL ============ */
+  #app{display:none;height:100vh;width:100%;}
+  #app.show{display:flex;}
+
+  #sidebar{
+    width:280px;flex:none;background:var(--ink);color:var(--white);
+    display:flex;flex-direction:column;padding:1.4rem 1.1rem;
+    border-right:1px solid #24345c;
+  }
+  .brand{display:flex;align-items:center;gap:.6rem;margin-bottom:.3rem;}
+  .brand-dot{width:10px;height:10px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal);}
+  .brand-name{font-family:var(--sans);font-weight:800;font-size:1.05rem;letter-spacing:.5px;}
+  .brand-name span{color:var(--orange);}
+  .team-tag{font-family:var(--mono);font-size:.72rem;color:var(--steel);margin-bottom:1.4rem;}
+
+  .progress-wrap{margin-bottom:1.6rem;}
+  .progress-label{display:flex;justify-content:space-between;font-size:.7rem;color:var(--steel);font-family:var(--mono);margin-bottom:.4rem;}
+  .progress-bar{height:6px;border-radius:4px;background:#24345c;overflow:hidden;}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--orange));width:0%;transition:width .6s ease;}
+
+  nav.navlist{display:flex;flex-direction:column;gap:.25rem;margin-bottom:1.6rem;}
+  .navitem{
+    display:flex;align-items:center;gap:.65rem;padding:.65rem .7rem;border-radius:8px;
+    color:#B9C4E0;font-size:.88rem;font-weight:600;background:transparent;border:none;text-align:left;
+    transition:background .15s,color .15s;
+  }
+  .navitem .ic{width:18px;height:18px;flex:none;opacity:.85;}
+  .navitem:hover{background:#1c2b52;color:var(--white);}
+  .navitem.active{background:var(--orange);color:var(--ink);}
+  .navitem.active .ic{opacity:1;}
+  .navitem[disabled]{opacity:.35;cursor:not-allowed;}
+  .navitem[disabled]:hover{background:transparent;color:#B9C4E0;}
+  .navbadge{margin-left:auto;font-family:var(--mono);font-size:.65rem;background:#24345c;color:var(--steel);padding:.1rem .4rem;border-radius:4px;}
+  .navitem.active .navbadge{background:rgba(20,33,61,.25);color:var(--ink);}
+
+  .gauges{margin-top:auto;border-top:1px solid #24345c;padding-top:1rem;}
+  .gauges h4{font-family:var(--mono);font-size:.68rem;letter-spacing:1px;color:var(--steel);margin:0 0 .8rem;text-transform:uppercase;}
+  .gauge-row{margin-bottom:.65rem;}
+  .gauge-top{display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:.25rem;}
+  .gauge-name{color:#B9C4E0;}
+  .gauge-val{font-family:var(--mono);font-weight:bold;color:var(--white);}
+  .gauge-track{height:5px;background:#24345c;border-radius:3px;overflow:hidden;}
+  .gauge-fill{height:100%;border-radius:3px;transition:width .7s ease;}
+  .delta-pop{
+    position:absolute;font-family:var(--mono);font-weight:bold;font-size:.7rem;
+    animation:popUp 1.4s ease forwards; pointer-events:none;
+  }
+  @keyframes popUp{
+    0%{opacity:0;transform:translateY(0);}
+    15%{opacity:1;}
+    80%{opacity:1;}
+    100%{opacity:0;transform:translateY(-16px);}
+  }
+
+  /* ============ MAIN AREA ============ */
+  #main{flex:1;overflow-y:auto;background:var(--paper);position:relative;}
+  .panel{display:none;padding:3rem 3.5rem;max-width:980px;margin:0 auto;animation:fadeSlide .4s ease forwards;}
+  .panel.active{display:block;}
+  @keyframes fadeSlide{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+  .kicker{font-family:var(--body);font-weight:bold;font-size:.72rem;letter-spacing:1.5px;color:var(--orange);text-transform:uppercase;margin-bottom:.5rem;}
+  h1.ptitle{font-family:var(--sans);font-size:2rem;font-weight:800;color:var(--ink);margin:0 0 .9rem;}
+  .lead{font-size:1.02rem;color:#444;line-height:1.55;margin-bottom:1.8rem;max-width:760px;}
+
+  .card{background:var(--white);border:1px solid var(--steel-light);border-radius:10px;padding:1.4rem 1.6rem;margin-bottom:1.1rem;}
+  .card h3{margin:0 0 .5rem;color:var(--ink);font-size:1.05rem;}
+  .card p{margin:.3rem 0;line-height:1.55;font-size:.94rem;color:#3a3f4d;}
+  .accent-left{border-left:4px solid var(--teal);}
+  .accent-left.orange{border-left-color:var(--orange);}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.8rem;margin-bottom:2rem;}
+  .stat-card{background:var(--ink);border-radius:10px;padding:1rem .9rem;color:white;position:relative;overflow:hidden;}
+  .stat-card .stat-icon{font-size:1.3rem;margin-bottom:.4rem;}
+  .stat-card .stat-val{font-family:var(--sans);font-weight:800;font-size:1.3rem;}
+  .stat-card .stat-label{font-size:.68rem;color:#B9C4E0;margin-top:.1rem;}
+
+  /* Mission step */
+  .step-dots{display:flex;gap:.5rem;margin-bottom:1.6rem;}
+  .step-dot{width:32px;height:6px;border-radius:4px;background:var(--steel-light);}
+  .step-dot.done{background:var(--teal);}
+  .step-dot.current{background:var(--orange);}
+
+  .briefing-box{
+    background:var(--ink);color:#dfe4f2;border-radius:12px;padding:1.6rem 1.8rem;margin-bottom:1.6rem;
+    border-left:5px solid var(--orange); font-style:italic; line-height:1.6; position:relative;
+  }
+  .briefing-box .who{font-family:var(--mono);font-style:normal;font-size:.72rem;color:var(--orange);letter-spacing:1px;margin-bottom:.5rem;display:block;}
+
+  .option{
+    display:block;width:100%;text-align:left;background:var(--white);border:2px solid var(--steel-light);
+    border-radius:10px;padding:1.05rem 1.3rem;margin-bottom:.8rem;transition:border-color .15s, transform .1s, box-shadow .15s;
+  }
+  .option:hover{border-color:var(--teal);transform:translateY(-1px);box-shadow:0 6px 16px rgba(15,155,142,.12);}
+  .option.selected{border-color:var(--orange);background:#FFF7EE;}
+  .option .opt-letter{
+    display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;
+    background:var(--ink);color:white;font-family:var(--sans);font-weight:bold;font-size:.8rem;margin-right:.7rem;
+  }
+  .option .opt-text{font-size:.96rem;color:var(--text);}
+  .option:disabled{cursor:default;}
+  .option.locked{border-color:#EADCD4;background:#FBF8F6;cursor:not-allowed;}
+  .option.locked:hover{transform:none;box-shadow:none;border-color:#EADCD4;}
+  .option.locked .opt-letter{background:var(--steel);}
+  .option.locked .opt-text{color:#A8ADB8;}
+  .opt-locked-msg{margin-top:.5rem;margin-left:2.1rem;font-size:.78rem;color:var(--danger);font-weight:600;}
+
+  #hint-zone{margin-top:1.4rem;}
+  .hint-btn{
+    background:none;border:1.5px dashed var(--steel);color:var(--steel);padding:.55rem 1rem;border-radius:8px;
+    font-size:.85rem;font-weight:600;
+  }
+  .hint-btn:hover{border-color:var(--orange);color:var(--orange-dim);}
+  .hint-card{
+    background:#FBF3E3;border-left:4px solid var(--orange);border-radius:8px;padding:.9rem 1.1rem;margin-top:.7rem;
+    font-size:.88rem;color:#5a4420;font-style:italic;
+  }
+
+  .continue-btn{
+    background:var(--orange);color:var(--ink);border:none;padding:.85rem 1.9rem;font-weight:bold;border-radius:8px;
+    font-size:.95rem;margin-top:.5rem;
+  }
+  .continue-btn:hover{filter:brightness(1.05);}
+  .continue-btn:disabled{opacity:.35;cursor:not-allowed;}
+
+  .effect-tag{
+    display:inline-block;font-family:var(--mono);font-size:.72rem;padding:.15rem .5rem;border-radius:5px;margin:.15rem .3rem .15rem 0;
+  }
+  .effect-up{background:#E4F5F2;color:var(--teal);}
+  .effect-down{background:#FBEAE8;color:var(--danger);}
+
+  .narration-box{background:var(--white);border:1px solid var(--steel-light);border-radius:10px;padding:1.4rem 1.6rem;margin-bottom:1.4rem;line-height:1.6;}
+
+  /* Bilan */
+  .bilan-gauge{margin-bottom:1.1rem;}
+  .bilan-gauge .top{display:flex;justify-content:space-between;font-size:.9rem;margin-bottom:.3rem;color:var(--ink);font-weight:600;}
+  .bilan-track{height:12px;background:var(--steel-light);border-radius:6px;overflow:hidden;}
+  .bilan-fill{height:100%;border-radius:6px;}
+
+  .path-table{width:100%;border-collapse:collapse;margin-top:1rem;}
+  .path-table th{text-align:left;font-family:var(--mono);font-size:.68rem;color:var(--steel);text-transform:uppercase;padding:.5rem;border-bottom:2px solid var(--ink);}
+  .path-table td{padding:.7rem .5rem;border-bottom:1px solid var(--steel-light);font-size:.88rem;vertical-align:top;}
+  .path-table tr:last-child td{border-bottom:none;}
+
+  .export-row{display:flex;gap:1rem;margin-top:2rem;flex-wrap:wrap;}
+  .export-btn{
+    flex:1;min-width:260px;display:flex;align-items:center;gap:.9rem;padding:1.1rem 1.3rem;border-radius:12px;border:none;
+    text-align:left;color:white;transition:transform .15s;
+  }
+  .export-btn:hover{transform:translateY(-2px);}
+  .export-btn.drive{background:var(--teal);}
+  .export-btn.pdf{background:var(--ink);}
+  .export-btn .eb-title{font-weight:bold;font-size:.98rem;}
+  .export-btn .eb-sub{font-size:.76rem;opacity:.85;margin-top:.15rem;}
+  .export-btn .eb-icon{font-size:1.5rem;}
+
+  .lock-msg{color:var(--steel);font-size:.95rem;font-style:italic;padding:2rem;text-align:center;border:2px dashed var(--steel-light);border-radius:12px;}
+
+  .note-hidden{background:#2a1518;border-left:4px solid var(--danger);color:#f3d9d7;border-radius:8px;padding:1rem 1.2rem;margin-top:1.2rem;font-size:.88rem;font-style:italic;}
+
+  .controller-analysis{background:var(--white);border:1px solid var(--steel-light);border-radius:12px;padding:1.5rem 1.7rem;margin-top:1.6rem;}
+  .ca-title{font-family:var(--sans);font-weight:800;font-size:1.05rem;color:var(--ink);margin-bottom:1rem;}
+  .verdict-row{display:flex;gap:.8rem;padding:.7rem 0;border-bottom:1px solid var(--steel-light);}
+  .verdict-row:last-child{border-bottom:none;}
+  .verdict-icon{flex:none;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;color:white;font-weight:bold;}
+  .verdict-icon.positive{background:var(--teal);}
+  .verdict-icon.mixed{background:var(--orange);}
+  .verdict-icon.risky{background:var(--danger);}
+  .verdict-body .vb-step{font-size:.78rem;color:var(--steel);font-family:var(--mono);margin-bottom:.15rem;}
+  .verdict-body .vb-text{font-size:.9rem;color:var(--text);line-height:1.45;}
+  .ca-synthesis{margin-top:1.2rem;padding:1.1rem 1.3rem;border-radius:10px;font-size:.92rem;line-height:1.55;font-style:italic;}
+  .ca-synthesis.tier-good{background:#EAF6F4;color:#0a5a52;border-left:4px solid var(--teal);}
+  .ca-synthesis.tier-mixed{background:#FDF3E6;color:#7a5217;border-left:4px solid var(--orange);}
+  .ca-synthesis.tier-risky{background:#FBEAE8;color:#8a2f26;border-left:4px solid var(--danger);}
+
+  .consigne-banner{background:#FFF7EE;border:1.5px dashed var(--orange);border-radius:10px;padding:.9rem 1.2rem;margin-top:1.6rem;font-size:.88rem;color:#7a4d17;}
+
+  .portfolio-box{background:#EAF6F4;border:1.5px solid var(--teal);border-radius:12px;padding:1.4rem 1.6rem;margin-top:1.6rem;}
+  .pb-title{font-family:var(--sans);font-weight:800;font-size:1.02rem;color:#0a5a52;margin-bottom:.5rem;}
+  .pb-instr{font-size:.85rem;color:#0a5a52;line-height:1.5;margin:0 0 1rem;}
+  .pq-item{background:var(--white);border-radius:8px;padding:.8rem 1rem;margin-bottom:.6rem;}
+  .pq-item:last-child{margin-bottom:0;}
+  .pq-step{font-family:var(--mono);font-size:.68rem;color:var(--teal);text-transform:uppercase;margin-bottom:.25rem;font-weight:bold;}
+  .pq-text{font-size:.88rem;color:var(--text);line-height:1.4;font-style:italic;}
+
+  .handoff-box{
+    background:var(--ink); border-radius:14px; padding:1.6rem 1.8rem; margin:1.6rem 0 2rem;
+    border:2px solid var(--orange); position:relative;
+  }
+  .handoff-title{font-family:var(--sans);font-weight:800;color:var(--white);font-size:1.1rem;margin-bottom:.6rem;}
+  .handoff-instr{color:#C9CFDE;font-size:.88rem;line-height:1.5;margin:0 0 1.2rem;max-width:720px;}
+  .handoff-grid{display:flex;flex-wrap:wrap;gap:.8rem;}
+  .handoff-item{background:#1c2b52;border-radius:10px;padding:.9rem .7rem;text-align:center;flex:1 1 140px;}
+  .handoff-item .hi-label{font-family:var(--mono);font-size:.62rem;color:var(--steel);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem;}
+  .handoff-item .hi-val{font-family:var(--sans);font-weight:800;font-size:1.35rem;color:var(--white);}
+  .handoff-footer{margin-top:1.1rem;font-family:var(--mono);font-size:.72rem;color:var(--steel);}
+  @media (max-width:880px){ .handoff-item{flex-basis:45%;} }
+
+  @media (max-width:880px){
+    #app{flex-direction:column;}
+    #sidebar{width:100%;height:auto;}
+    .panel{padding:1.6rem;}
+    .stat-grid{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ BOOT SCREEN ============ -->
+<div id="boot">
+  <div class="boot-box">
+    <div class="boot-logo">CELLULE <span>NOMAD</span></div>
+    <div class="boot-sub">TERMINAL D'INTERVENTION — RÉSILIENCE SUPPLY CHAIN</div>
+    <div id="boot-log"></div>
+    <div id="boot-form">
+      <label>NOM DE VOTRE CELLULE (ÉQUIPE)</label>
+      <input type="text" id="team-name-input" placeholder="Ex : Cellule Aurore" maxlength="40">
+      <br>
+      <button id="boot-enter" disabled>Continuer →</button>
+    </div>
+    <div id="reprise-form">
+      <div class="reprise-title">REPRISE DE CAMPAGNE — Mission 1 → Mission 2</div>
+      <p class="reprise-instr">Cellule <strong id="reprise-team-name"></strong>, saisissez les 5 valeurs de votre <strong>carnet de bord de la Mission 1</strong> (notées ou capturées en fin de mission précédente). Si vous démarrez une nouvelle campagne sans historique, laissez les valeurs par défaut.</p>
+      <div class="reprise-grid">
+        <div class="reprise-field">
+          <label>Trésorerie (k€)</label>
+          <input type="number" id="reprise-tresorerie" value="500" step="1">
+        </div>
+        <div class="reprise-field">
+          <label>Taux de service (%)</label>
+          <input type="number" id="reprise-service" value="92" step="1">
+        </div>
+        <div class="reprise-field">
+          <label>Coût logistique (%)</label>
+          <input type="number" id="reprise-cout" value="11" step="0.1">
+        </div>
+        <div class="reprise-field">
+          <label>Résilience (/100)</label>
+          <input type="number" id="reprise-resilience" value="40" step="1">
+        </div>
+        <div class="reprise-field">
+          <label>Image RSE (/100)</label>
+          <input type="number" id="reprise-rse" value="55" step="1">
+        </div>
+      </div>
+      <button id="reprise-confirm">Confirmer et rejoindre le terminal →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP SHELL ============ -->
+<div id="app">
+  <div id="sidebar">
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <div class="brand-name">NOMAD<span>.</span></div>
+    </div>
+    <div class="team-tag" id="team-tag">CELLULE —</div>
+
+    <div class="progress-wrap">
+      <div class="progress-label"><span>PROGRESSION MISSION</span><span id="progress-pct">0%</span></div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    </div>
+
+    <nav class="navlist">
+      <button class="navitem" data-panel="brief">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Brief de mission
+      </button>
+      <button class="navitem" data-panel="dossier">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-3H5a2 2 0 0 0-2 2Z"/></svg>
+        Dossier Altiva Outdoor
+      </button>
+      <button class="navitem" data-panel="controleur">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
+        Le Contrôleur
+      </button>
+      <button class="navitem active" data-panel="mission">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg>
+        Mission : Le pari de la demande
+        <span class="navbadge" id="nav-mission-badge">0/4</span>
+      </button>
+      <button class="navitem" data-panel="bilan" disabled id="nav-bilan">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/></svg>
+        Bilan &amp; export
+      </button>
+    </nav>
+
+    <div class="gauges">
+      <h4>Jauges de la cellule</h4>
+      <div id="gauge-list"></div>
+    </div>
+  </div>
+
+  <div id="main">
+
+    <!-- BRIEF -->
+    <div class="panel active" id="panel-brief">
+      <div class="kicker">Terminal NOMAD</div>
+      <h1 class="ptitle">Brief de mission</h1>
+      <p class="lead">Bienvenue à nouveau, <span id="brief-team-name">Cellule</span>. Le réseau d'Altiva Outdoor tient enfin debout depuis votre dernière intervention — mais un nouveau problème vient d'atterrir sur le bureau du Contrôleur.</p>
+
+      <div class="card accent-left">
+        <h3>Où en est la campagne</h3>
+        <p>Votre cellule a stabilisé la crise fournisseur d'Altiva lors de la Mission 1. Vos jauges de fin de mission vous accompagnent dans cette nouvelle intervention — c'est pourquoi vous les avez ressaisies à l'instant.</p>
+      </div>
+      <div class="card accent-left orange">
+        <h3>Votre mission aujourd'hui</h3>
+        <p><strong>« Le pari de la demande »</strong> — un post d'un influenceur outdoor a explosé le week-end dernier avec la nouvelle gamme de tentes Altiva (2 millions de vues). Le service commercial annonce +45% de demande prévue pour la rentrée. La direction veut lancer les commandes fournisseurs dans 48h. Votre mission : fiabiliser cette prévision et faire tourner un cycle S&amp;OP express avant que quelqu'un n'engage l'argent sur un chiffre qui sort de nulle part.</p>
+      </div>
+      <div class="card">
+        <h3>Comment ça marche</h3>
+        <p>À chaque étape clé, votre cellule doit trancher entre plusieurs options. Chaque choix a un effet réel sur vos jauges — trésorerie, service client, coût logistique, résilience, image RSE. Si vous bloquez, le Contrôleur peut vous donner une piste (menu « Mission » → bouton dédié). Une fois la mission terminée, retrouvez votre bilan complet dans l'onglet <strong>Bilan &amp; export</strong>.</p>
+      </div>
+    </div>
+
+    <!-- DOSSIER ALTIVA -->
+    <div class="panel" id="panel-dossier">
+      <div class="kicker">Dossier client</div>
+      <h1 class="ptitle">Altiva Outdoor</h1>
+      <p class="lead">Marque française d'équipement outdoor éco-conçu — tentes, sacs à dos, vêtements techniques.</p>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-icon">💶</div><div class="stat-val">~80 M€</div><div class="stat-label">Chiffre d'affaires</div></div>
+        <div class="stat-card"><div class="stat-icon">🏬</div><div class="stat-val">400+</div><div class="stat-label">Revendeurs Europe</div></div>
+        <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-val">2M vues</div><div class="stat-label">Post viral (week-end)</div></div>
+        <div class="stat-card"><div class="stat-icon">🇺🇸</div><div class="stat-val">En cours</div><div class="stat-label">Lancement US</div></div>
+        <div class="stat-card"><div class="stat-icon">🏭</div><div class="stat-val">Asie du S-E</div><div class="stat-label">Production déléguée</div></div>
+      </div>
+      <div class="card accent-left">
+        <h3>Contexte de la crise</h3>
+        <p>Un post d'un influenceur outdoor a mis en lumière la nouvelle gamme de tentes ce week-end (2 millions de vues). Le service commercial y voit une opportunité en or ; la Production et la Finance, elles, s'inquiètent d'un emballement difficile à vérifier — et la trésorerie reste marquée par les efforts de la Mission 1.</p>
+      </div>
+      <div class="card accent-left orange">
+        <h3>Point d'attention</h3>
+        <p>Un chiffre de demande non vérifié qui remonte jusqu'aux commandes fournisseurs peut suffire à déclencher un effet bullwhip (cf. Séance 1) : mieux vaut fiabiliser la prévision avant de l'engager dans toute la chaîne, plutôt que de la corriger après coup.</p>
+      </div>
+    </div>
+
+    <!-- CONTROLEUR -->
+    <div class="panel" id="panel-controleur">
+      <div class="kicker">Votre mentor</div>
+      <h1 class="ptitle">Le Contrôleur</h1>
+      <p class="lead">Voix de NOMAD, le Contrôleur brief chaque mission et peut vous éclairer si votre cellule bloque — mais ne décidera jamais à votre place.</p>
+      <div class="briefing-box">
+        <span class="who">LE CONTRÔLEUR — TRANSMISSION</span>
+        « Un bon chiffre de prévision ne tombe jamais du ciel — il se construit, se croise, se discute entre plusieurs fonctions. Cette mission va vous faire vivre cette négociation de l'intérieur. Deux pistes par étape, pas plus — après ça, c'est votre jugement qui compte. »
+      </div>
+      <div class="card">
+        <h3>Le système de pistes</h3>
+        <p>À chaque étape avec décision, un bouton « Demander une piste » est disponible. La première piste ouvre une perspective. La seconde, si vous la demandez, est plus directe. Utilisez-les sans hésiter : l'objectif est d'apprendre à bien arbitrer, pas de deviner une réponse cachée.</p>
+      </div>
+    </div>
+
+    <!-- MISSION -->
+    <div class="panel" id="panel-mission">
+      <div class="kicker">Mission 2 — Le pari de la demande</div>
+      <h1 class="ptitle" id="step-title">Chargement...</h1>
+      <div class="step-dots" id="step-dots"></div>
+      <div id="step-content"></div>
+    </div>
+
+    <!-- BILAN -->
+    <div class="panel" id="panel-bilan">
+      <div class="kicker">Fin de mission</div>
+      <h1 class="ptitle">Bilan de la Cellule <span id="bilan-team-name"></span></h1>
+      <div id="bilan-locked" class="lock-msg">Terminez la mission « Le pari de la demande » pour débloquer votre bilan.</div>
+      <div id="bilan-content" style="display:none;">
+        <p class="lead">Voici l'état final de vos jauges et le chemin emprunté. Ce bilan est la base idéale pour le débriefing collectif — et la première pièce de votre dossier de restitution pour l'examen final.</p>
+        <div id="bilan-gauges"></div>
+
+        <div class="handoff-box">
+          <div class="handoff-title">📋 Carnet de bord — à conserver pour la Mission 3</div>
+          <p class="handoff-instr">Au début de la prochaine mission, on vous demandera de ressaisir ces 5 valeurs pour reprendre la campagne là où vous l'avez laissée. <strong>Notez-les maintenant</strong> (papier, notes de téléphone, ou capture d'écran de cet encart) :</p>
+          <div class="handoff-grid" id="handoff-grid"></div>
+          <div class="handoff-footer">Cellule <strong id="handoff-team"></strong> — Mission 2 « Le pari de la demande » terminée</div>
+        </div>
+
+        <table class="path-table" id="bilan-path"></table>
+        <div id="bilan-hidden-note"></div>
+
+        <div class="portfolio-box">
+          <div class="pb-title">🎓 Questions pour votre dossier de restitution</div>
+          <p class="pb-instr">À la fin de la campagne, votre cellule présentera et justifiera ses choix à l'oral pour l'examen final. Ces questions, propres aux décisions de cette mission, vous aident à préparer cet argumentaire — répondez-y dès maintenant, à chaud, pendant que le contexte est encore frais.</p>
+          <div id="portfolio-questions"></div>
+        </div>
+
+        <div class="controller-analysis">
+          <div class="ca-title">🎖️ Analyse du Contrôleur</div>
+          <div id="controller-verdicts"></div>
+          <div class="ca-synthesis" id="controller-synthesis"></div>
+        </div>
+
+        <div class="consigne-banner">📤 <strong>Consigne :</strong> téléchargez le PDF de cette mission et envoyez-le à votre formateur avant la prochaine séance. <strong>Conservez aussi votre propre copie</strong> — vous en aurez besoin, avec celles des prochaines missions, pour préparer votre présentation orale de fin de campagne.</div>
+        <div class="export-row">
+          <button class="export-btn drive" id="btn-drive">
+            <div class="eb-icon">📘</div>
+            <div>
+              <div class="eb-title">Télécharger le cours (Séance 2)</div>
+              <div class="eb-sub">Ouvre le support de cours complet sur Google Drive</div>
+            </div>
+          </button>
+          <button class="export-btn pdf" id="btn-pdf">
+            <div class="eb-icon">📄</div>
+            <div>
+              <div class="eb-title">Exporter mes décisions en PDF</div>
+              <div class="eb-sub">Idéal pour le débriefing avec votre formateur</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const DRIVE_LINK = "https://docs.google.com/presentation/d/1Q2lQMzoTGbdTcFHBOBjSJdxD5hQfRhf8/edit?usp=sharing&ouid=111400757778053252382&rtpof=true&sd=true";
+
+const state = {
+  team: "",
+  gauges: { tresorerie: 500, service: 92, cout: 11, resilience: 40, rse: 55 },
+  history: [], // {stepId, label, choiceLabel, effectsText}
+  hiddenNote: false,
+  currentStep: "s1",
+  decisionsDone: 0,
+};
+
+const GAUGE_META = [
+  { key:"tresorerie", label:"Trésorerie", unit:"k€", color:"#0F9B8E", max:600 },
+  { key:"service", label:"Taux de service", unit:"%", color:"#FB8B24", max:100 },
+  { key:"cout", label:"Coût logistique", unit:"% CA", color:"#8D99AE", max:25 },
+  { key:"resilience", label:"Résilience", unit:"/100", color:"#0F9B8E", max:100 },
+  { key:"rse", label:"Image RSE", unit:"/100", color:"#FB8B24", max:100 },
+];
+
+// ============================================================
+// MISSION DATA — Mission 2 "Le pari de la demande"
+// ============================================================
+const STEPS = {
+  s1: {
+    type:"choice", order:1,
+    title:"Étape 1 — Fiabiliser le chiffre",
+    briefing:"« Cellule, le réseau d'Altiva tient enfin debout depuis votre dernière intervention. Mais un nouveau problème vient d'atterrir sur mon bureau. Un post d'un influenceur outdoor a explosé le week-end dernier avec la nouvelle gamme de tentes Altiva — 2 millions de vues. Le service commercial débarque avec un chiffre : +45% de demande prévue pour la rentrée. La direction veut lancer les commandes fournisseurs dans 48h. Votre mission : fiabiliser cette prévision et faire tourner un cycle S&OP express avant que quelqu'un n'engage l'argent sur un chiffre qui sort de nulle part. »",
+    prompt:"Trois options pour traiter le chiffre du commercial :",
+    options:[
+      { letter:"A", text:"Faire confiance au terrain : valider le chiffre commercial tel quel et lancer les commandes immédiatement.", next:"s2", effects:{resilience:-10, service:+2},
+        verdict:{tone:"risky", text:"Le piège classique du signal pris pour une donnée validée — exactement le genre de décision qui nourrit l'effet bullwhip en amont de la chaîne (rappel Séance 1)."} },
+      { letter:"B", text:"Recalculer une prévision purement quantitative (lissage exponentiel sur l'historique), sans tenir compte du buzz.", next:"s3", effects:{resilience:+5, service:-5},
+        verdict:{tone:"mixed", text:"Rigoureux, mais un modèle quantitatif seul ne « voit » pas un événement inédit comme un post viral — risque de sous-estimer une vraie rupture de tendance."} },
+      { letter:"C", text:"Croiser les deux : lancer un Delphi express de 2h avec ventes, marketing et supply chain pour converger vers un chiffre consensuel documenté.", next:"s4", effects:{resilience:+10, service:+3, tresorerie:-10},
+        verdict:{tone:"positive", text:"La réponse la plus proche des bonnes pratiques S&OP : un chiffre consensuel, documenté, qui engage plusieurs fonctions dès le départ."} },
+    ],
+    hints:[
+      "Le Contrôleur : « Un chiffre qui vient d'une seule source, aussi enthousiaste soit-elle, reste un signal — pas une donnée validée. »",
+      "Le Contrôleur : « Vous avez deux familles d'outils à votre disposition depuis la Séance 2 : le calcul, et la discussion. Pourquoi choisir l'un plutôt que l'autre — ou les deux ? »",
+    ],
+    reflection:"Pourquoi avoir choisi cette méthode pour fiabiliser le chiffre plutôt que les deux autres ? Qu'est-ce que ce choix révèle de votre rapport au risque face à un signal marché inédit ?",
+  },
+  s2: {
+    type:"narration", order:1,
+    title:"Validation rapide",
+    text:"Vous validez le chiffre commercial sans le retravailler. Les commandes fournisseurs partent dans l'heure. Le service Achats est soulagé de gagner du temps — mais personne n'a vérifié si la Production peut réellement suivre ce rythme.",
+    next:"s5",
+  },
+  s3: {
+    type:"narration", order:1,
+    title:"Le modèle tempère l'enthousiasme",
+    text:"Votre modèle de lissage exponentiel tourne en quelques minutes : +12% par rapport à l'an dernier, loin des +45% annoncés. Le service Marketing s'inquiète : « On va rater le pic si on se limite à ça. »",
+    next:"s5",
+  },
+  s4: {
+    type:"narration", order:1,
+    title:"Le consensus du Delphi",
+    text:"Le Delphi express réunit ventes, marketing et supply chain pendant deux heures intenses. Après plusieurs tours d'échanges, le groupe converge vers un chiffre de +28%, documenté et partagé par tous.",
+    next:"s5",
+  },
+  s5: {
+    type:"choice", order:2,
+    title:"Étape 2 — Confrontation à la capacité réelle",
+    briefing:"« Votre chiffre est posé. Mais la Production vient de rappeler : on ne peut produire que 70% de ce volume dans les délais, sauf à changer quelque chose. »",
+    prompt:"Comment absorber l'écart entre demande retenue et capacité réelle ?",
+    options:[
+      { letter:"A", text:"Investir en heures supplémentaires et sous-traitance ponctuelle pour se rapprocher du chiffre validé.", next:"s6", effects:{tresorerie:-70, service:+10, cout:+2},
+        verdict:{tone:"mixed", text:"Un pari financier pur : ça rapproche du chiffre visé, mais au prix fort et sans filet en cas d'erreur de prévision."} },
+      { letter:"B", text:"Aligner la prévision retenue sur la capacité réelle — accepter le risque de rupture si la demande est aussi forte que prévu.", next:"s6", effects:{service:-8, resilience:+5},
+        verdict:{tone:"risky", text:"Protège la trésorerie, mais expose directement à la rupture — l'antithèse de la résilience recherchée depuis la Mission 1."} },
+      { letter:"C", text:"Produire au maximum de la capacité actuelle et sécuriser une option d'achat conditionnelle chez un fournisseur de secours.", next:"s6", effects:{tresorerie:-30, service:+5, resilience:+15},
+        verdict:{tone:"positive", text:"Le compromis le plus solide — d'autant plus efficace s'il réactive un filet de sécurité déjà identifié lors de la Mission 1."} },
+    ],
+    hints:[
+      "Le Contrôleur : « Rappelez-vous le triangle coût / service / risque de la Séance 1 — cette décision en est une application directe. »",
+      "Le Contrôleur : « Avez-vous déjà, lors d'une mission précédente, identifié un filet de sécurité que vous pourriez réactiver maintenant ? »",
+    ],
+    reflection:"En quoi votre arbitrage entre demande souhaitée et capacité réelle reflète-t-il une priorité claire (service, coût, ou résilience) ? Avez-vous réactivé un filet de sécurité de la Mission 1 ?",
+  },
+  s6: {
+    type:"choice", order:3,
+    title:"Étape 3 — Le mur budgétaire",
+    briefing:"« La Finance vient de voir passer votre demande d'heures supplémentaires. Ça ne passe pas sans discussion — pas après ce que la Mission 1 a déjà coûté. »",
+    prompt:"Comment sortir de ce blocage budgétaire ?",
+    options:[
+      { letter:"A", text:"Négocier un compromis : moitié du budget en heures sup, moitié en ajustement ailleurs (stock de sécurité réduit sur une autre gamme).", next:"s7", effects:{tresorerie:-25, service:+3, resilience:+5},
+        verdict:{tone:"positive", text:"Illustre concrètement l'étape de « Réconciliation » du cycle S&OP : personne n'obtient exactement ce qu'il voulait, mais l'effort est réparti."} },
+      { letter:"B", text:"Maintenir la demande de budget complète, quitte à tendre fortement la trésorerie.", next:"s7", effects:{tresorerie:-50, service:+8, resilience:+5},
+        verdict:{tone:"mixed", text:"Privilégie le service au prix d'une trésorerie déjà fragile après la Mission 1 — cohérent seulement si l'équipe a vraiment de la marge financière."} },
+      { letter:"C", text:"Renoncer aux heures supplémentaires, préserver la trésorerie, accepter un risque de rupture plus élevé.", next:"s7", effects:{tresorerie:-5, service:-10, resilience:-10},
+        verdict:{tone:"risky", text:"Ne se défend vraiment que si la trésorerie est déjà dans le rouge — sinon, c'est un renoncement au service plus prudent que nécessaire."} },
+    ],
+    hints:[
+      "Le Contrôleur : « Regardez l'état réel de votre trésorerie avant de trancher — pas ce qu'elle était en début de campagne. »",
+      "Le Contrôleur : « Une négociation S&OP réussie, c'est rarement 100% pour un camp. »",
+    ],
+    reflection:"Comment votre position dans cette négociation budgétaire reflète-t-elle un arbitrage implicite entre service client et prudence financière ? Était-ce cohérent avec l'état réel de vos jauges ?",
+  },
+  s7: {
+    type:"choice", order:4,
+    title:"Étape 4 — Ce qu'on présente à la direction",
+    briefing:"« Dernière ligne droite. Le plan doit être présenté à la direction générale d'Altiva demain matin — c'est l'étape Executive S&OP. Comment le présentez-vous ? »",
+    prompt:"Quelle posture pour la présentation finale ?",
+    options:[
+      { letter:"A", text:"Présenter le chiffre retenu avec sa marge d'incertitude clairement expliquée (méthode, hypothèses, risques).", next:"s8", effects:{resilience:+10, rse:+5}, hidden:false,
+        verdict:{tone:"positive", text:"La posture qui construit la confiance sur le long terme, même si elle expose davantage la cellule à des questions difficiles à court terme."} },
+      { letter:"B", text:"Présenter uniquement le chiffre optimiste, pour rassurer une direction déjà nerveuse après la Mission 1.", next:"s8", effects:{}, hidden:true,
+        verdict:{tone:"risky", text:"Aucun effet visible aujourd'hui — mais une incertitude non communiquée finit toujours par ressurgir, au pire moment."} },
+      { letter:"C", text:"Proposer un plan à deux vitesses avec points de contrôle mensuels pour ajuster si la demande réelle diverge.", next:"s8", effects:{resilience:+15, cout:+1, service:+5}, hidden:false,
+        verdict:{tone:"positive", text:"Une approche agile qui reconnaît l'incertitude sans la subir — au prix d'un effort de suivi plus complexe."} },
+    ],
+    hints:[
+      "Le Contrôleur : « Ce dilemme, vous l'avez déjà croisé à la Mission 1. Qu'aviez-vous appris sur le coût du silence ? »",
+      "Le Contrôleur : « Une direction \"rassurée\" par un chiffre faux le reste rarement bien longtemps. »",
+    ],
+    reflection:"Quel impact anticipez-vous du niveau de transparence choisi sur la confiance de la direction envers votre cellule pour les prochaines missions ?",
+  },
+  s8: { type:"bilan", order:5, title:"Bilan de mission" },
+};
+
+const DECISION_STEPS = ["s1","s5","s6","s7"]; // used for progress tracking
+
+// ============================================================
+// BOOT SEQUENCE
+// ============================================================
+const bootLines = [
+  { text:"> Initialisation du terminal NOMAD...", cls:"" },
+  { text:"> Vérification des accès sécurisés...", cls:"ok" , suffix:"OK"},
+  { text:"> Connexion au dossier client ALTIVA OUTDOOR...", cls:"ok", suffix:"ÉTABLIE" },
+  { text:"> Alerte détectée : pic de demande non planifié (+45%)", cls:"warn" },
+  { text:"> Chargement du dossier de mission « Le pari de la demande »...", cls:"ok", suffix:"PRÊT" },
+  { text:"> En attente d'identification de cellule...", cls:"" },
+];
+
+function runBoot(){
+  const log = document.getElementById('boot-log');
+  let i = 0;
+  function typeLine(lineObj, onDone){
+    const div = document.createElement('div');
+    div.className = 'line';
+    div.style.opacity = '1';
+    const textSpan = document.createElement('span');
+    const cursorSpan = document.createElement('span');
+    cursorSpan.className = 'cursor';
+    div.appendChild(textSpan);
+    div.appendChild(cursorSpan);
+    log.appendChild(div);
+    const full = lineObj.text;
+    let c = 0;
+    function tick(){
+      textSpan.textContent = full.slice(0, c);
+      c++;
+      if(c <= full.length){
+        setTimeout(tick, 14 + Math.random()*18);
+      } else {
+        cursorSpan.remove();
+        if(lineObj.suffix){
+          const b = document.createElement('b');
+          b.className = lineObj.cls;
+          b.textContent = ' ' + lineObj.suffix;
+          div.appendChild(b);
+        }
+        setTimeout(onDone, 220);
+      }
+    }
+    tick();
+  }
+  function next(){
+    if(i >= bootLines.length){
+      document.getElementById('boot-form').classList.add('show');
+      return;
+    }
+    typeLine(bootLines[i], ()=>{ i++; next(); });
+  }
+  next();
+}
+runBoot();
+
+document.getElementById('team-name-input').addEventListener('input', (e)=>{
+  document.getElementById('boot-enter').disabled = e.target.value.trim().length === 0;
+});
+document.getElementById('team-name-input').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter' && !document.getElementById('boot-enter').disabled) showRepriseForm();
+});
+document.getElementById('boot-enter').addEventListener('click', showRepriseForm);
+document.getElementById('reprise-confirm').addEventListener('click', confirmReprise);
+
+function showRepriseForm(){
+  state.team = document.getElementById('team-name-input').value.trim() || "Cellule NOMAD";
+  document.getElementById('boot-form').classList.remove('show');
+  document.getElementById('boot-form').style.display = 'none';
+  document.getElementById('reprise-team-name').textContent = state.team;
+  document.getElementById('reprise-form').classList.add('show');
+}
+
+function confirmReprise(){
+  const tresorerie = parseFloat(document.getElementById('reprise-tresorerie').value);
+  const service = parseFloat(document.getElementById('reprise-service').value);
+  const cout = parseFloat(document.getElementById('reprise-cout').value);
+  const resilience = parseFloat(document.getElementById('reprise-resilience').value);
+  const rse = parseFloat(document.getElementById('reprise-rse').value);
+  state.gauges = {
+    tresorerie: isNaN(tresorerie) ? 500 : tresorerie,
+    service: isNaN(service) ? 92 : clamp(service, 0, 100),
+    cout: isNaN(cout) ? 11 : clamp(cout, 0, 30),
+    resilience: isNaN(resilience) ? 40 : clamp(resilience, 0, 100),
+    rse: isNaN(rse) ? 55 : clamp(rse, 0, 100),
+  };
+  enterApp();
+}
+
+function enterApp(){
+  document.getElementById('boot').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+  document.getElementById('team-tag').textContent = "CELLULE — " + state.team.toUpperCase();
+  document.getElementById('brief-team-name').textContent = state.team;
+  document.getElementById('bilan-team-name').textContent = "— " + state.team;
+  renderGauges();
+  renderMissionStep();
+  updateProgress();
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+Array.from(document.querySelectorAll('.navitem')).forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    if(btn.disabled) return;
+    Array.from(document.querySelectorAll('.navitem')).forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    Array.from(document.querySelectorAll('.panel')).forEach(p=>p.classList.remove('active'));
+    document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+  });
+});
+
+// ============================================================
+// GAUGES
+// ============================================================
+function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+function renderGauges(){
+  const list = document.getElementById('gauge-list');
+  list.innerHTML = '';
+  GAUGE_META.forEach(g=>{
+    const val = state.gauges[g.key];
+    const pct = clamp((val / g.max) * 100, 2, 100);
+    const row = document.createElement('div');
+    row.className = 'gauge-row';
+    row.innerHTML = `
+      <div class="gauge-top"><span class="gauge-name">${g.label}</span><span class="gauge-val" id="gval-${g.key}">${fmtVal(g,val)}</span></div>
+      <div class="gauge-track"><div class="gauge-fill" id="gfill-${g.key}" style="width:${pct}%;background:${g.color}"></div></div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function fmtVal(g, v){
+  if(g.key === 'tresorerie') return Math.round(v) + ' k€';
+  if(g.key === 'cout') return v.toFixed(1) + '%';
+  return Math.round(v) + (g.key==='service' ? '%' : '/100');
+}
+
+function applyEffects(effects){
+  if(!effects) return;
+  Object.keys(effects).forEach(k=>{
+    state.gauges[k] += effects[k];
+  });
+  // clamps
+  state.gauges.service = clamp(state.gauges.service, 0, 100);
+  state.gauges.resilience = clamp(state.gauges.resilience, 0, 100);
+  state.gauges.rse = clamp(state.gauges.rse, 0, 100);
+  state.gauges.cout = clamp(state.gauges.cout, 0, 30);
+  state.gauges.tresorerie = clamp(state.gauges.tresorerie, 0, 900);
+  renderGauges();
+}
+
+function effectsToText(effects){
+  if(!effects || Object.keys(effects).length===0) return "Aucun effet immédiat sur les jauges.";
+  const names = {tresorerie:"Trésorerie", service:"Service", cout:"Coût logistique", resilience:"Résilience", rse:"RSE"};
+  const units = {tresorerie:" k€", service:" pts", cout:" pts", resilience:" pts", rse:" pts"};
+  return Object.keys(effects).map(k=>{
+    const v = effects[k];
+    return (v>0?"+":"") + v + units[k] + " " + names[k];
+  }).join("  ·  ");
+}
+
+function effectsToHTML(effects){
+  if(!effects || Object.keys(effects).length===0) return '<span class="effect-tag" style="background:#EEF0F3;color:#8D99AE;">Aucun effet visible</span>';
+  const names = {tresorerie:"Trésorerie", service:"Service", cout:"Coût log.", resilience:"Résilience", rse:"RSE"};
+  const units = {tresorerie:"k€", service:"pts", cout:"pts", resilience:"pts", rse:"pts"};
+  return Object.keys(effects).map(k=>{
+    const v = effects[k];
+    const cls = v >= 0 ? 'effect-up' : 'effect-down';
+    return `<span class="effect-tag ${cls}">${names[k]} ${v>0?'+':''}${v}${units[k]}</span>`;
+  }).join('');
+}
+
+// ============================================================
+// MISSION RENDERING
+// ============================================================
+function updateProgress(){
+  const pct = Math.round((state.decisionsDone / DECISION_STEPS.length) * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('nav-mission-badge').textContent = state.decisionsDone + '/' + DECISION_STEPS.length;
+  if(state.decisionsDone >= DECISION_STEPS.length){
+    document.getElementById('nav-bilan').disabled = false;
+  }
+}
+
+function renderStepDots(currentOrder){
+  const wrap = document.getElementById('step-dots');
+  wrap.innerHTML = '';
+  for(let i=1;i<=4;i++){
+    const d = document.createElement('div');
+    d.className = 'step-dot' + (i < currentOrder ? ' done' : (i === currentOrder ? ' current' : ''));
+    wrap.appendChild(d);
+  }
+}
+
+let hintsShown = 0;
+
+function renderMissionStep(){
+  const step = STEPS[state.currentStep];
+  document.getElementById('step-title').textContent = step.title;
+  renderStepDots(step.order);
+  const content = document.getElementById('step-content');
+  hintsShown = 0;
+
+  if(step.type === 'choice'){
+    content.innerHTML = `
+      <div class="briefing-box"><span class="who">LE CONTRÔLEUR — TRANSMISSION</span>${step.briefing}</div>
+      <p style="font-weight:600;color:var(--ink);margin-bottom:.8rem;">${step.prompt}</p>
+      <div id="options-wrap"></div>
+      <div id="hint-zone">
+        <button class="hint-btn" id="hint-btn">💡 Demander une piste au Contrôleur</button>
+        <div id="hint-list"></div>
+      </div>
+    `;
+    const ow = document.getElementById('options-wrap');
+    step.options.forEach(opt=>{
+      const cost = (opt.effects && opt.effects.tresorerie) ? opt.effects.tresorerie : 0;
+      const projected = state.gauges.tresorerie + cost;
+      const affordable = projected >= 0;
+      const b = document.createElement('button');
+      b.className = 'option';
+      if(!affordable){
+        b.classList.add('locked');
+        b.disabled = true;
+        b.innerHTML = `<span class="opt-letter">${opt.letter}</span><span class="opt-text">${opt.text}</span>
+          <div class="opt-locked-msg">🔒 Budget insuffisant — cette option nécessite ${Math.abs(cost)} k€, il vous reste ${state.gauges.tresorerie} k€.</div>`;
+      } else {
+        b.innerHTML = `<span class="opt-letter">${opt.letter}</span><span class="opt-text">${opt.text}</span>`;
+        b.addEventListener('click', ()=> chooseOption(step, opt, b));
+      }
+      ow.appendChild(b);
+    });
+    document.getElementById('hint-btn').addEventListener('click', ()=> showHint(step));
+  } else if(step.type === 'narration'){
+    content.innerHTML = `
+      <div class="narration-box">${step.text}</div>
+      <button class="continue-btn" id="continue-btn">Continuer →</button>
+    `;
+    document.getElementById('continue-btn').addEventListener('click', ()=>{
+      state.currentStep = step.next;
+      renderMissionStep();
+    });
+  } else if(step.type === 'bilan'){
+    content.innerHTML = `<div class="narration-box">Mission terminée. Rendez-vous dans l'onglet <strong>Bilan &amp; export</strong> pour consulter le résultat complet de votre cellule.</div>`;
+    unlockBilan();
+  }
+}
+
+function showHint(step){
+  if(hintsShown >= step.hints.length) return;
+  const div = document.createElement('div');
+  div.className = 'hint-card';
+  div.textContent = "Piste " + (hintsShown+1) + " — " + step.hints[hintsShown];
+  document.getElementById('hint-list').appendChild(div);
+  hintsShown++;
+  if(hintsShown >= step.hints.length){
+    document.getElementById('hint-btn').disabled = true;
+    document.getElementById('hint-btn').textContent = "Vous avez utilisé vos 2 pistes pour cette étape";
+  }
+}
+
+function chooseOption(step, opt, btnEl){
+  // lock all options visually
+  Array.from(document.querySelectorAll('#options-wrap .option')).forEach(b=>{
+    b.disabled = true;
+    b.style.opacity = '0.55';
+  });
+  btnEl.classList.add('selected');
+  btnEl.style.opacity = '1';
+
+  applyEffects(opt.effects);
+  if(opt.hidden) state.hiddenNote = true;
+
+  state.history.push({
+    stepTitle: step.title,
+    optionLabel: opt.letter + ". " + opt.text,
+    effectsText: effectsToText(opt.effects),
+    verdict: opt.verdict || null,
+    reflection: step.reflection || null,
+  });
+  if(DECISION_STEPS.includes(state.currentStep)){
+    state.decisionsDone++;
+    updateProgress();
+  }
+
+  // show effect summary + continue button under options
+  const summary = document.createElement('div');
+  summary.style.marginTop = '1rem';
+  summary.innerHTML = `<div style="font-size:.8rem;color:var(--steel);margin-bottom:.4rem;">Effet(s) de ce choix :</div>${effectsToHTML(opt.effects)}
+    <div><button class="continue-btn" id="continue-after-choice">Continuer →</button></div>`;
+  document.getElementById('options-wrap').appendChild(summary);
+  document.getElementById('hint-zone').style.display = 'none';
+
+  document.getElementById('continue-after-choice').addEventListener('click', ()=>{
+    state.currentStep = opt.next;
+    renderMissionStep();
+  });
+}
+
+// ============================================================
+// BILAN
+// ============================================================
+function unlockBilan(){
+  document.getElementById('nav-bilan').disabled = false;
+  document.getElementById('bilan-locked').style.display = 'none';
+  document.getElementById('bilan-content').style.display = 'block';
+
+  const gwrap = document.getElementById('bilan-gauges');
+  gwrap.innerHTML = '';
+  GAUGE_META.forEach(g=>{
+    const val = state.gauges[g.key];
+    const pct = clamp((val/g.max)*100, 2, 100);
+    const row = document.createElement('div');
+    row.className = 'bilan-gauge';
+    row.innerHTML = `<div class="top"><span>${g.label}</span><span>${fmtVal(g,val)}</span></div>
+      <div class="bilan-track"><div class="bilan-fill" style="width:${pct}%;background:${g.color}"></div></div>`;
+    gwrap.appendChild(row);
+  });
+
+  const hgrid = document.getElementById('handoff-grid');
+  hgrid.innerHTML = '';
+  GAUGE_META.forEach(g=>{
+    const val = state.gauges[g.key];
+    const item = document.createElement('div');
+    item.className = 'handoff-item';
+    item.innerHTML = `<div class="hi-label">${g.label}</div><div class="hi-val">${fmtVal(g,val)}</div>`;
+    hgrid.appendChild(item);
+  });
+  document.getElementById('handoff-team').textContent = state.team;
+
+  const table = document.getElementById('bilan-path');
+  table.innerHTML = `<tr><th style="width:22%;">Étape</th><th style="width:50%;">Décision de la cellule</th><th>Effet</th></tr>` +
+    state.history.map(h=>`<tr><td><strong>${h.stepTitle}</strong></td><td>${h.optionLabel}</td><td style="font-family:var(--mono);font-size:.78rem;color:var(--steel);">${h.effectsText}</td></tr>`).join('');
+
+  const noteWrap = document.getElementById('bilan-hidden-note');
+  if(state.hiddenNote){
+    noteWrap.innerHTML = `<div class="note-hidden">🔒 Note du Contrôleur, transmise en fin de mission : « Cellule, une chose encore. Vous avez choisi de ne présenter que le chiffre optimiste à l'Étape 4. Ce choix n'a eu aucun effet visible sur vos jauges — mais gardez-le en tête pour la suite de la campagne. Une incertitude non communiquée finit toujours par ressurgir, souvent au pire moment. »</div>`;
+  } else {
+    noteWrap.innerHTML = '';
+  }
+
+  renderControllerAnalysis();
+  renderPortfolioQuestions();
+}
+
+function renderPortfolioQuestions(){
+  const wrap = document.getElementById('portfolio-questions');
+  wrap.innerHTML = state.history.filter(h=>h.reflection).map(h=>`
+    <div class="pq-item">
+      <div class="pq-step">${h.stepTitle}</div>
+      <div class="pq-text">${h.reflection}</div>
+    </div>
+  `).join('');
+}
+
+const TONE_ICON = { positive:"✓", mixed:"~", risky:"!" };
+const TONE_LABEL = { positive:"Choix pertinent", mixed:"Choix à double tranchant", risky:"Choix risqué" };
+
+function renderControllerAnalysis(){
+  const vwrap = document.getElementById('controller-verdicts');
+  vwrap.innerHTML = state.history.filter(h=>h.verdict).map(h=>`
+    <div class="verdict-row">
+      <div class="verdict-icon ${h.verdict.tone}">${TONE_ICON[h.verdict.tone]}</div>
+      <div class="verdict-body">
+        <div class="vb-step">${h.stepTitle.toUpperCase()} · ${TONE_LABEL[h.verdict.tone]}</div>
+        <div class="vb-text">${h.verdict.text}</div>
+      </div>
+    </div>
+  `).join('');
+
+  const score = state.history.reduce((acc,h)=>{
+    if(!h.verdict) return acc;
+    if(h.verdict.tone==='positive') return acc+1;
+    if(h.verdict.tone==='risky') return acc-1;
+    return acc;
+  }, 0);
+
+  const synth = document.getElementById('controller-synthesis');
+  let tierClass, text;
+  if(score >= 2){
+    tierClass = 'tier-good';
+    text = `« Cellule ${state.team}, votre approche a été solide. Vous avez globalement privilégié la résilience et la cohérence avec le positionnement RSE d'Altiva, quitte à accepter un coût plus élevé. C'est exactement le type d'arbitrage qu'on attend d'une cellule NOMAD sous pression. Continuez ainsi pour la Mission 3 — votre réseau vous remerciera. »`;
+  } else if(score <= -2){
+    tierClass = 'tier-risky';
+    text = `« Cellule ${state.team}, je dois être honnête : plusieurs de vos choix ont privilégié la rapidité ou le court terme au détriment de la résilience et de l'image de marque. Ça a pu limiter la casse immédiate, mais la vulnérabilité structurelle d'Altiva reste largement entière. Attendez-vous à ce que la Mission 3 soit plus tendue si un nouvel incident survient. »`;
+  } else {
+    tierClass = 'tier-mixed';
+    text = `« Cellule ${state.team}, votre mission a été marquée par des arbitrages contrastés — certains choix judicieux, d'autres plus discutables. C'est une cellule pragmatique, qui a cherché l'équilibre plutôt que de trancher franchement. Gardez en tête que chaque compromis a un coût différé : on en reparle à la Mission 3. »`;
+  }
+  synth.className = 'ca-synthesis ' + tierClass;
+  synth.textContent = text;
+  state.controllerScore = score;
+  state.controllerTier = tierClass;
+}
+
+// ============================================================
+// EXPORTS
+// ============================================================
+document.getElementById('btn-drive').addEventListener('click', ()=>{
+  window.open(DRIVE_LINK, '_blank');
+});
+
+document.getElementById('btn-pdf').addEventListener('click', ()=>{
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const INK = [20,33,61];
+  const ORANGE = [251,139,36];
+  const TEAL = [15,155,142];
+  const DANGER = [192,69,58];
+  const STEEL = [110,120,140];
+  const TONE_COLOR = { positive: TEAL, mixed: ORANGE, risky: DANGER };
+  let y = 20;
+
+  function ensureSpace(needed){
+    if(y + needed > 280){ doc.addPage(); y = 20; }
+  }
+
+  doc.setFillColor(...INK);
+  doc.rect(0,0,210,28,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(16);
+  doc.text('CELLULE NOMAD — Bilan de mission', 14, 13);
+  doc.setFontSize(10);
+  doc.setFont('helvetica','normal');
+  doc.text('Mission 2 — « Le pari de la demande » — Altiva Outdoor', 14, 20);
+  doc.setFontSize(8);
+  doc.setTextColor(...[251,139,36]);
+  doc.text('Pièce du dossier de restitution — examen final de campagne', 14, 25);
+
+  y = 38;
+  doc.setTextColor(...INK);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(12);
+  doc.text('Cellule : ' + state.team, 14, y);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...STEEL);
+  doc.text('Export généré le ' + new Date().toLocaleDateString('fr-FR') + ' à ' + new Date().toLocaleTimeString('fr-FR'), 14, y+5);
+
+  y += 14;
+  doc.setDrawColor(...ORANGE);
+  doc.setLineWidth(0.8);
+  doc.line(14, y, 40, y);
+  y += 9;
+
+  // ---- CARNET DE BORD (boxed, prominent) ----
+  const boxTop = y;
+  const boxHeight = 34;
+  doc.setFillColor(...INK);
+  doc.roundedRect(14, boxTop, 182, boxHeight, 2, 2, 'F');
+  doc.setDrawColor(...ORANGE);
+  doc.setLineWidth(0.6);
+  doc.roundedRect(14, boxTop, 182, boxHeight, 2, 2, 'S');
+  doc.setTextColor(...ORANGE);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(10.5);
+  doc.text('CARNET DE BORD — à ressaisir au début de la Mission 3', 19, boxTop + 8);
+
+  const colW = 182 / 5;
+  GAUGE_META.forEach((g,i)=>{
+    const val = state.gauges[g.key];
+    const cx = 14 + i*colW + colW/2;
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(200,205,220);
+    doc.text(g.label.toUpperCase(), cx, boxTop + 17, {align:'center'});
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(13);
+    doc.setTextColor(255,255,255);
+    doc.text(fmtVal(g,val), cx, boxTop + 26, {align:'center'});
+  });
+  y = boxTop + boxHeight + 10;
+
+  // ---- DECISIONS ----
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...INK);
+  doc.text('Décisions prises', 14, y);
+  y += 7;
+
+  state.history.forEach((h)=>{
+    ensureSpace(22);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...INK);
+    doc.text(h.stepTitle, 14, y);
+    y += 5;
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(50,50,50);
+    const lines = doc.splitTextToSize(h.optionLabel, 180);
+    doc.text(lines, 16, y);
+    y += lines.length * 4.6 + 1;
+    doc.setFont('helvetica','italic');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...STEEL);
+    doc.text(h.effectsText, 16, y);
+    y += 8;
+  });
+
+  if(state.hiddenNote){
+    ensureSpace(22);
+    y += 3;
+    doc.setFillColor(250,235,230);
+    doc.rect(12, y-5, 186, 20, 'F');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(9);
+    doc.setTextColor(180,60,50);
+    doc.text('Note du Contrôleur (chiffre optimiste présenté seul) :', 15, y);
+    doc.setFont('helvetica','italic');
+    doc.setFontSize(8.5);
+    const noteLines = doc.splitTextToSize('Ce choix n\'a eu aucun effet visible sur les jauges, mais une incertitude non communiquée finit toujours par ressurgir, souvent au pire moment.', 178);
+    doc.text(noteLines, 15, y+5);
+    y += 22;
+  }
+
+  // ---- QUESTIONS POUR LE DOSSIER DE RESTITUTION (examen final) ----
+  const reflectionEntries = state.history.filter(h=>h.reflection);
+  if(reflectionEntries.length){
+    ensureSpace(26);
+    y += 4;
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(11);
+    doc.setTextColor(10,90,82);
+    doc.text('Questions pour votre dossier de restitution (examen final)', 14, y);
+    y += 5;
+    doc.setFont('helvetica','italic');
+    doc.setFontSize(8);
+    doc.setTextColor(...STEEL);
+    const introQ = doc.splitTextToSize('À conserver avec les exports des prochaines missions : ces questions vous aideront à construire votre présentation orale de fin de campagne.', 178);
+    doc.text(introQ, 14, y);
+    y += introQ.length * 3.8 + 4;
+
+    reflectionEntries.forEach(h=>{
+      ensureSpace(18);
+      doc.setFillColor(234,246,244);
+      const qLines = doc.splitTextToSize(h.reflection, 172);
+      const boxH = 6 + qLines.length * 4.3;
+      doc.roundedRect(14, y-4, 182, boxH, 1.5, 1.5, 'F');
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(15,155,142);
+      doc.text(h.stepTitle.toUpperCase(), 18, y);
+      doc.setFont('helvetica','italic');
+      doc.setFontSize(9);
+      doc.setTextColor(40,60,58);
+      doc.text(qLines, 18, y+5);
+      y += boxH + 4;
+    });
+    y += 2;
+  }
+
+  // ---- ANALYSE DU CONTRÔLEUR ----
+  ensureSpace(20);
+  y += 4;
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...INK);
+  doc.text('Analyse du Contrôleur', 14, y);
+  y += 7;
+
+  state.history.forEach(h=>{
+    if(!h.verdict) return;
+    ensureSpace(16);
+    const c = TONE_COLOR[h.verdict.tone] || STEEL;
+    doc.setFillColor(...c);
+    doc.circle(16, y-1.5, 1.6, 'F');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...c);
+    doc.text(h.stepTitle, 20, y);
+    y += 4.2;
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    doc.setTextColor(50,50,50);
+    const vLines = doc.splitTextToSize(h.verdict.text, 176);
+    doc.text(vLines, 20, y);
+    y += vLines.length * 4.4 + 3;
+  });
+
+  if(state.controllerTier){
+    ensureSpace(24);
+    y += 2;
+    const tierColor = state.controllerTier === 'tier-good' ? TEAL : (state.controllerTier === 'tier-risky' ? DANGER : ORANGE);
+    doc.setDrawColor(...tierColor);
+    doc.setLineWidth(0.8);
+    doc.line(14, y-2, 14, y+18);
+    const synthText = document.getElementById('controller-synthesis').textContent;
+    doc.setFont('helvetica','italic');
+    doc.setFontSize(9);
+    doc.setTextColor(70,70,70);
+    const sLines = doc.splitTextToSize(synthText, 172);
+    doc.text(sLines, 19, y+2);
+    y += sLines.length * 4.4 + 8;
+  }
+
+  // ---- CONSIGNE ----
+  ensureSpace(14);
+  y += 2;
+  doc.setFillColor(255,247,238);
+  doc.roundedRect(14, y-5, 182, 12, 2, 2, 'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(150,90,20);
+  doc.text('Consigne : envoyez ce PDF à votre formateur après chaque mission.', 18, y+2);
+
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...STEEL);
+  doc.text('Document généré automatiquement par le terminal Cellule NOMAD — usage pédagogique, débriefing en classe.', 14, 290);
+
+  doc.save('Bilan_Mission2_' + state.team.replace(/[^a-z0-9]/gi,'_') + '.pdf');
+});
+</script>
+<!-- Bouton retour vers l'accueil du jeu (ajouté pour le hub) -->
+<style>#sidebar{padding-top:2.8rem}</style>
+<a href="../index.html" id="retour-hub" style="position:fixed;top:.4rem;left:.4rem;z-index:1000;padding:.3rem .6rem;font:600 .8rem/1.2 system-ui,sans-serif;color:#ece8dc;background:rgba(20,33,61,.92);border:1px solid rgba(236,232,220,.35);border-radius:6px;text-decoration:none">&larr; Tous les jeux</a>
+</body>
+</html>
