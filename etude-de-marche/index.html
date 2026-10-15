@@ -110,6 +110,7 @@ function afficher(){
     li.querySelector(".cat").textContent = j.categorie;
     var a = li.querySelector(".jouer");
     a.href = j.fichier;
+    a.target = "_blank"; // chaque mission s’ouvre dans un nouvel onglet
     a.setAttribute("aria-label", "Jouer à " + j.titre);
     grille.appendChild(li);
   });
