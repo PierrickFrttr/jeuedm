@@ -10,3 +10,6 @@
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Originaux de l espace formateur (seule la version chiffree dans formateur/ est publiee)
+prive/

@@ -26,7 +26,28 @@ Page d'accueil : `index.html`. Les jeux sont dans le dossier `jeux/`.
 4. **Publiez** : `git add .` puis `git commit -m "Ajout mission 4"` puis `git push`.
    Le site se met à jour en une à deux minutes.
 
-## À ne pas publier
+## Espace formateur (protégé par mot de passe)
 
-Les corrigés et documents animateur (`*bonnes_reponses*`, `*.docx`, `*.pptx`) ne doivent pas être mis dans ce dossier :
-le dépôt est public, les étudiants pourraient les lire. Le fichier `.gitignore` les bloque par sécurité.
+Page `formateur/index.html` (lien « Espace formateur » en bas de l'accueil).
+Les originaux sont dans `prive/` (jamais publié). Seule une version **chiffrée** est mise en ligne dans
+`formateur/donnees/` : sans le mot de passe, ces fichiers sont illisibles, même en les téléchargeant depuis GitHub.
+
+**Ajouter ou modifier un fichier :**
+
+1. Déposez-le dans `prive/cours/` ou `prive/mission-N/` (minuscules, sans espaces ni accents).
+   Pour une nouvelle mission, ajoutez son titre dans `SECTIONS` en haut de `outils/chiffrer.mjs`.
+2. Dans Git Bash, depuis ce dossier :
+
+   ```bash
+   MDP_FORMATEUR='le-mot-de-passe' node outils/chiffrer.mjs
+   git add formateur && git commit -m "Mise à jour espace formateur" && git push
+   ```
+
+**Changer le mot de passe :** relancez la même commande avec le nouveau mot de passe, puis publiez.
+L'ancien ne fonctionne plus. Conservez le mot de passe dans un gestionnaire : il n'est enregistré nulle part
+dans le projet, et s'il est perdu, il suffit de rechiffrer avec un nouveau.
+
+## À ne pas publier en clair
+
+Les corrigés et documents animateur (`*bonnes_reponses*`, `*.docx`, `*.pptx`, `*.json`) ne doivent jamais être
+ajoutés ailleurs que dans `prive/` : le dépôt est public. Le fichier `.gitignore` les bloque par sécurité.
